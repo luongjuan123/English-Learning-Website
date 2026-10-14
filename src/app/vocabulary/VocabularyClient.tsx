@@ -197,6 +197,22 @@ export function VocabularyClient({ initialWords }: { initialWords: VocabItem[] }
             <span>Vocab Test</span>
           </Link>
 
+          <Link
+            href="/vocabulary/custom-test"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Custom Test</span>
+          </Link>
+
+          <Link
+            href="/vocabulary/custom-vocab"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-semibold hover:bg-teal-700"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Custom Vocab</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => setShowAddModal(true)}

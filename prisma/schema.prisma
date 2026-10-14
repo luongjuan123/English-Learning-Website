@@ -20,6 +20,8 @@ model User {
   userVocabularies   UserVocabulary[]
   testAttempts       TestAttempt[]
   writingSubmissions WritingSubmission[]
+  savedWordLists     SavedWordList[]
+  customTestSessions CustomTestSession[]
 }
 
 model Level {
@@ -191,3 +193,35 @@ model WritingSubmission {
   overallScore Int?
   createdAt    DateTime @default(now())
 }
+
+model SavedWordList {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  wordsJson   String   // JSON string array of words
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CustomTestSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title               String
+  configJson          String    // JSON string of configuration (questionType, difficulty, language, etc.)
+  questionsJson       String    // Server-side secret question keys & full explanation
+  clientQuestionsJson String    // Sanitized client-safe questions without answers
+  status              String    @default("active") // "active", "completed"
+  score               Int?
+  maxScore            Int?
+  percentage          Float?
+  passed              Boolean?
+  answersJson         String?   // JSON string of submitted answers
+  resultsJson         String?   // JSON string of graded results
+  missedWordsJson     String?   // JSON string of missed words
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+}
+
