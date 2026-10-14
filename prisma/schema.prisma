@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  name               String              @default("Student")
+  targetLevel        String              @default("B2")
+  currentCefr        String              @default("A1")
+  streakDays         Int                 @default(0)
+  lastActiveDate     DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  lessonProgress     LessonProgress[]
+  userVocabularies   UserVocabulary[]
+  testAttempts       TestAttempt[]
+  writingSubmissions WritingSubmission[]
+}
+
+model Level {
+  id          String    @id // 'A1', 'A2', 'B1', 'B2'
+  name        String
+  description String
+  orderIndex  Int
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  levelId     String
+  level       Level    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  orderIndex  Int
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id                 String           @id @default(cuid())
+  chapterId          String
+  chapter            Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title              String
+  slug               String
+  objectives         String           // JSON string array
+  grammarExplanation String           // Markdown content
+  vietnameseNotes    String?          // Grammar explanation in Vietnamese
+  readingPassage     String?          // Level-appropriate reading passage
+  readingPassageVn   String?          // Vietnamese translation
+  listeningScript    String?          // Text for audio pronunciation / listening practice
+  summary            String?
+  orderIndex         Int
+  isCustomGenerated  Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  exercises          Exercise[]
+  lessonProgress     LessonProgress[]
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  type        String   // 'mcq', 'fill_blank', 'reorder', 'translate'
+  prompt      String
+  promptVn    String?
+  optionsJson String?  // JSON array for multiple choice
+  answer      String   // Correct answer
+  explanation String?  // Explanation for learners
+  orderIndex  Int
+}
+
+model VocabularyWord {
+  id               String           @id @default(cuid())
+  word             String           @unique
+  phonetic         String?
+  pos              String           // noun, verb, adjective, etc.
+  defEn            String
+  defVn            String
+  exampleEn        String
+  exampleVn        String
+  cefrLevel        String           // A1, A2, B1, B2
+  topic            String           // Daily Life, Travel, Business, etc.
+  synonyms         String?
+  collocations     String?
+  createdAt        DateTime         @default(now())
+  userVocabularies UserVocabulary[]
+}
+
+model UserVocabulary {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId         String
+  word           VocabularyWord   @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  status         String           @default("new") // 'new', 'learning', 'familiar', 'mastered'
+  intervalDays   Int              @default(0)
+  easeFactor     Float            @default(2.5)
+  repetitions    Int              @default(0)
+  nextReviewDate DateTime         @default(now())
+  lastReviewedAt DateTime?
+  timesCorrect   Int              @default(0)
+  timesIncorrect Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  reviews        ReviewAttempt[]
+
+  @@unique([userId, wordId])
+}
+
+model ReviewAttempt {
+  id               String         @id @default(cuid())
+  userVocabularyId String
+  userVocabulary   UserVocabulary @relation(fields: [userVocabularyId], references: [id], onDelete: Cascade)
+  rating           Int            // 0 - 5
+  intervalDays     Int
+  reviewedAt       DateTime       @default(now())
+}
+
+model Test {
+  id               String         @id @default(cuid())
+  title            String
+  description      String?
+  category         String         // 'grammar', 'vocabulary', 'reading', 'sentence', 'error_correction', 'placement', 'level_assessment'
+  cefrLevel        String         // 'A1', 'A2', 'B1', 'B2', 'mixed'
+  timeLimitMinutes Int            @default(15)
+  passingScore     Int            @default(70)
+  isCustom         Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  questions        TestQuestion[]
+  attempts         TestAttempt[]
+}
+
+model TestQuestion {
+  id            String   @id @default(cuid())
+  testId        String
+  test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  type          String   // 'mcq', 'fill_blank', 'sentence_order', 'error_identify', 'short_answer'
+  question      String
+  contextText   String?
+  optionsJson   String?  // JSON string array
+  correctAnswer String
+  explanation   String?
+  topic         String
+  orderIndex    Int
+}
+
+model TestAttempt {
+  id             String   @id @default(cuid())
+  testId         String
+  test           Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score          Int
+  maxScore       Int
+  percentage     Float
+  passed         Boolean
+  answersJson    String   // JSON string of user answers
+  feedbackJson   String?  // JSON string of question-by-question explanations
+  weakTopicsJson String?  // JSON string array of topics needing review
+  completedAt    DateTime @default(now())
+}
+
+model LessonProgress {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId      String
+  lesson        Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status        String    @default("not_started") // 'not_started', 'in_progress', 'completed'
+  quizScore     Int?
+  completedAt   DateTime?
+  lastStudiedAt DateTime  @default(now())
+
+  @@unique([userId, lessonId])
+}
+
+model WritingSubmission {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt       String
+  studentText  String
+  topic        String?
+  cefrLevel    String   // 'A1', 'A2', 'B1', 'B2'
+  feedbackJson String   // JSON string of rubric breakdown & corrections
+  overallScore Int?
+  createdAt    DateTime @default(now())
+}
